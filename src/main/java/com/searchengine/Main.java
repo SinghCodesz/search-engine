@@ -1,37 +1,38 @@
 package com.searchengine;
 
-import com.searchengine.crawler.WebCrawler;
+import com.searchengine.crawler.MultiThreadedCrawler;
 import com.searchengine.model.Document;
+import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
-        WebCrawler crawler = new WebCrawler();
 
-        try {
-            Document doc = crawler.crawl("https://example.com");
+        // Create crawler: 50 pages, 5 threads
+        MultiThreadedCrawler crawler = new MultiThreadedCrawler(50, 5);
 
-            System.out.println("\n========== CRAWL RESULT ==========");
-            System.out.println("URL:      " + doc.getUrl());
-            System.out.println("Title:    " + doc.getTitle());
-            System.out.println("Status:   " + doc.getHttpStatusCode());
+        // Add seed URLs to start crawling
+        crawler.addSeed("https://example.com");
+        crawler.addSeed("https://httpbin.org");
+        crawler.addSeed("https://books.toscrape.com");     // Good: many links
+        crawler.addSeed("https://quotes.toscrape.com");    // Good: many links
+        // Add more seeds for better coverage
 
-            String preview = doc.getCleanedText();
-            if (preview.length() > 200) {
-                preview = preview.substring(0, 200) + "...";
-            }
-            System.out.println("Text:     " + preview);
-            System.out.println("Links:    " + doc.getOutLinks().size());
+        System.out.println("Starting web crawl...");
+        System.out.println("This may take 1-2 minutes depending on network speed.\n");
 
-            if (!doc.getOutLinks().isEmpty()) {
-                System.out.println("\nFirst 5 links:");
-                doc.getOutLinks().stream().limit(5).forEach(System.out::println);
-            }
+        // Start crawling
+        List<Document> documents = crawler.startCrawling();
 
-            System.out.println("\n✅ Crawler working correctly!");
+        // Print summary
+        crawler.printSummary();
 
-        } catch (Exception e) {
-            System.err.println("❌ Error: " + e.getMessage());
-            e.printStackTrace();
+        // Check if we got enough pages
+        if (documents.size() < 10) {
+            System.out.println("\n⚠️  Only crawled " + documents.size() +
+                    " pages. This might be due to network issues or restrictive robots.txt.");
+            System.out.println("Try adding more seed URLs or using a news website.");
+        } else {
+            System.out.println("\n✅ Multi-threaded crawler working perfectly!");
         }
     }
 }

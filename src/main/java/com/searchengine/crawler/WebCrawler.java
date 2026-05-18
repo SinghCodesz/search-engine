@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.time.Instant;
 
 public class WebCrawler {
-
+    private static final int POLITENESS_DELAY_MS = 1000;
     private static final int TIMEOUT_MS = 10000;
     private static final String USER_AGENT =
             "Mozilla/5.0 (compatible; SearchEngine/1.0; student-project)";
@@ -44,5 +44,12 @@ public class WebCrawler {
         System.out.println("  → Links: " + doc.getOutLinks().size());
 
         return doc;
+    }
+    public void politeDelay(String url) {
+        try {
+            Thread.sleep(POLITENESS_DELAY_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
