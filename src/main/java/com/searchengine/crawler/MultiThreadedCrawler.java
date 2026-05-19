@@ -32,9 +32,8 @@ public class MultiThreadedCrawler {
      * Start crawling with multiple threads
      */
     public List<Document> startCrawling() {
-        System.out.println("Starting multi-threaded crawler...");
-        System.out.println("Threads: " + numThreads);
-        System.out.println("Max pages: " + frontier.getCrawledCount() + " target");
+        log("Starting multi-threaded crawler...");
+        log("Threads: " + numThreads);
 
         startTime = System.currentTimeMillis();
 
@@ -52,20 +51,20 @@ public class MultiThreadedCrawler {
             // Wait up to 10 minutes
             executor.awaitTermination(10, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
-            System.err.println("Crawling interrupted");
+            logError("Crawling interrupted");
             executor.shutdownNow();
         }
 
         long duration = System.currentTimeMillis() - startTime;
 
-        System.out.println("\n========== CRAWL COMPLETE ==========");
-        System.out.println("Total pages crawled: " + crawledDocuments.size());
-        System.out.println("Failed URLs: " + failedUrls.size());
-        System.out.println("Time taken: " + (duration / 1000.0) + " seconds");
+        log("\n========== CRAWL COMPLETE ==========");
+        log("Total pages crawled: " + crawledDocuments.size());
+        log("Failed URLs: " + failedUrls.size());
+        log("Time taken: " + (duration / 1000.0) + " seconds");
 
         if (!crawledDocuments.isEmpty()) {
             double pagesPerSec = crawledDocuments.size() / (duration / 1000.0);
-            System.out.println("Throughput: " + String.format("%.1f", pagesPerSec) + " pages/sec");
+            log("Throughput: " + String.format("%.1f", pagesPerSec) + " pages/sec");
         }
 
         return crawledDocuments;
@@ -96,25 +95,36 @@ public class MultiThreadedCrawler {
                 // Progress update every 5 pages
                 int count = frontier.getCrawledCount();
                 if (count % 5 == 0) {
-                    System.out.println("[Thread " + threadId + "] Progress: " +
+                    log("[Thread " + threadId + "] Progress: " +
                             count + " crawled, " + frontier.getQueueSize() + " queued");
                 }
 
             } catch (IOException e) {
                 failedUrls.add(url);
-                System.err.println("[Thread " + threadId + "] Failed: " +
+                logError("[Thread " + threadId + "] Failed: " +
                         url + " - " + e.getMessage());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
                 failedUrls.add(url);
-                System.err.println("[Thread " + threadId + "] Error: " +
+                logError("[Thread " + threadId + "] Error: " +
                         url + " - " + e.getMessage());
             }
         }
 
-        System.out.println("[Thread " + threadId + "] Finished");
+        log("[Thread " + threadId + "] Finished");
+    }
+
+    /**
+     * Synchronized logging — prevents jumbled console output
+     */
+    private synchronized void log(String message) {
+        System.out.println(message);
+    }
+
+    private synchronized void logError(String message) {
+        System.err.println(message);
     }
 
     /**
@@ -133,17 +143,17 @@ public class MultiThreadedCrawler {
      * Print summary of crawled documents
      */
     public void printSummary() {
-        System.out.println("\n========== CRAWLED PAGES ==========");
+        log("\n========== CRAWLED PAGES ==========");
         List<Document> sorted = new ArrayList<>(crawledDocuments);
         sorted.sort((a, b) -> Integer.compare(b.getOutLinks().size(), a.getOutLinks().size()));
 
-        System.out.println("\nTop 10 pages by outgoing links:");
+        log("\nTop 10 pages by outgoing links:");
         sorted.stream().limit(10).forEach(doc -> {
-            System.out.println("  " + doc.getTitle());
-            System.out.println("    URL: " + doc.getUrl());
-            System.out.println("    Links: " + doc.getOutLinks().size());
-            System.out.println("    Text: " + doc.getCleanedText().length() + " chars");
-            System.out.println();
+            log("  " + doc.getTitle());
+            log("    URL: " + doc.getUrl());
+            log("    Links: " + doc.getOutLinks().size());
+            log("    Text: " + doc.getCleanedText().length() + " chars");
+            log("");
         });
     }
 }
