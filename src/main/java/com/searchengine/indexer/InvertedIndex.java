@@ -70,6 +70,26 @@ public class InvertedIndex {
         }
     }
 
+
+    /**
+     * Directly add a posting (used when loading from disk).
+     */
+    public void addDocumentDirect(String term, int documentId,
+                                  int termFrequency, List<Integer> positions) {
+        List<Posting> postingsList = index.get(term);
+        if (postingsList == null) {
+            postingsList = new ArrayList<>();
+            index.put(term, postingsList);
+        }
+
+        Posting posting = new Posting(documentId);
+        for (int pos : positions) {
+            posting.addPosition(pos);
+        }
+        postingsList.add(posting);
+        totalTokens += termFrequency;
+    }
+
     /**
      * Get postings list for a term.
      * Returns null if term doesn't exist in index.
@@ -98,6 +118,10 @@ public class InvertedIndex {
      */
     public int getTotalDocuments() {
         return totalDocuments;
+    }
+
+    public void setTotalDocuments(int count) {
+        this.totalDocuments = count;
     }
 
     /**
