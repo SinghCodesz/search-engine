@@ -1,0 +1,99 @@
+package com.searchengine.query;
+
+import com.searchengine.indexer.InvertedIndex;
+import com.searchengine.ranker.DocumentScore;
+import com.searchengine.ranker.TFIDFRanker;
+
+import java.util.*;
+
+/**
+ * Coordinates the full search pipeline:
+ * Parse → Retrieve → Intersect → Rank
+ */
+public class SearchService {
+
+    private final InvertedIndex index;
+    private final QueryParser queryParser;
+    private final PostingsIntersector intersector;
+    private final TFIDFRanker ranker;
+
+    public SearchService(InvertedIndex index) {
+        this.index = index;
+        this.queryParser = new QueryParser();
+        this.intersector = new PostingsIntersector();
+        this.ranker = new TFIDFRanker(index);
+    }
+
+    /**
+     * Execute a full search.
+     * Returns ranked list of document scores.
+     */
+    public List<DocumentScore> search(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        System.out.println("\n========== SEARCH: '" + query + "' ==========");
+
+        // Step 1: Parse query
+        List<String> queryTerms = queryParser.parseQuery(query);
+        System.out.println("Parsed terms: " + queryTerms);
+
+        if (queryTerms.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Step 2: Retrieve posting lists
+        Map<String, List<Integer>> termPostings = new HashMap<>();
+        for (String term : queryTerms) {
+            List<Integer> postings = index.search(term);
+            System.out.println("  '" + term + "' → " + postings.size() + " docs");
+            if (!postings.isEmpty()) {
+                termPostings.put(term, postings);
+            }
+        }
+
+        if (termPostings.isEmpty()) {
+            System.out.println("No matching documents found.");
+            return new ArrayList<>();
+        }
+
+        // Step 3: Intersect posting lists (AND by default)
+        List<List<Integer>> postingLists = new ArrayList<>(termPostings.values());
+        List<Integer> resultDocIds;
+
+        if (queryParser.isOrQuery(query)) {
+            System.out.println("Query type: OR");
+            resultDocIds = intersector.union(postingLists);
+        } else {
+            System.out.println("Query type: AND");
+            resultDocIds = intersector.intersect(postingLists);
+        }
+
+        System.out.println("Documents after intersection: " + resultDocIds.size());
+
+        if (resultDocIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Step 4: Rank results
+        List<DocumentScore> ranked = ranker.rank(query, resultDocIds);
+        System.out.println("Ranked results: " + ranked.size());
+
+        return ranked;
+    }
+
+    /**
+     * Get document count for a term.
+     */
+    public int getTermDocumentCount(String term) {
+        return index.getDocumentFrequency(term);
+    }
+
+    /**
+     * Get total indexed documents.
+     */
+    public int getTotalDocuments() {
+        return index.getTotalDocuments();
+    }
+}
