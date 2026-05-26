@@ -3,6 +3,9 @@ package com.searchengine;
 import com.searchengine.indexer.IndexSerializer;
 import com.searchengine.indexer.InvertedIndex;
 import com.searchengine.ranker.*;
+import com.searchengine.query.SearchService;
+import java.util.List;
+import java.util.Map;
 
 import java.util.*;
 
@@ -39,8 +42,41 @@ public class Main {
         // Show BM25 explanation
         System.out.println("\n========== BM25 EXPLANATION ==========");
         explainBM25(index, bm25Ranker, "book");
+        // Test phrase queries
+        System.out.println("\n" + "=".repeat(70));
+        System.out.println("PHRASE QUERY TESTS");
+        System.out.println("=".repeat(70));
+
+        SearchService searchService = new SearchService(index);
+
+        // Note: Your index might not have many phrases. Test with words that
+        // appear together in your crawled documents.
+        testSearch(searchService, docMap, "\"example domain\"");
+        testSearch(searchService, docMap, "\"books toscrape\"");
+        testSearch(searchService, docMap, "\"quotes toscrape\"");
+        testSearch(searchService, docMap, "\"goodreads com\"");
 
         System.out.println("\n✅ BM25 ranking working!");
+    }
+
+    private static void testSearch(SearchService service,
+                                   Map<Integer, String[]> docMap,
+                                   String query) {
+        List<com.searchengine.ranker.DocumentScore> results = service.search(query);
+
+        if (results.isEmpty()) {
+            System.out.println("\nQuery '" + query + "': No results");
+            return;
+        }
+
+        System.out.println("\nTop " + Math.min(5, results.size()) + " results:");
+        results.stream().limit(5).forEach(ds -> {
+            String[] docInfo = docMap.get(ds.getDocumentId());
+            String title = docInfo != null ? docInfo[1] : "Unknown";
+            String url = docInfo != null ? docInfo[0] : "Unknown";
+            System.out.println(String.format("  %.4f — %s", ds.getScore(), title));
+            System.out.println("         " + url);
+        });
     }
 
     private static void compareRankers(TFIDFRanker tfidf, BM25Ranker bm25,

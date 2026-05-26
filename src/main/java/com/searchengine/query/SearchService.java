@@ -3,6 +3,7 @@ package com.searchengine.query;
 import com.searchengine.indexer.InvertedIndex;
 import com.searchengine.ranker.DocumentScore;
 import com.searchengine.ranker.TFIDFRanker;
+import com.searchengine.query.PhraseQueryHandler;
 
 import java.util.*;
 
@@ -16,12 +17,14 @@ public class SearchService {
     private final QueryParser queryParser;
     private final PostingsIntersector intersector;
     private final TFIDFRanker ranker;
+    private final PhraseQueryHandler phraseHandler;
 
     public SearchService(InvertedIndex index) {
         this.index = index;
         this.queryParser = new QueryParser();
         this.intersector = new PostingsIntersector();
         this.ranker = new TFIDFRanker(index);
+        this.phraseHandler = new PhraseQueryHandler(index);
     }
 
     /**
@@ -41,6 +44,27 @@ public class SearchService {
 
         if (queryTerms.isEmpty()) {
             return new ArrayList<>();
+        }
+
+        // Step 2: Check for phrase query
+        if (PhraseQueryHandler.isPhraseQuery(query)) {
+            System.out.println("Query type: PHRASE");
+            String phraseContent = PhraseQueryHandler.stripQuotes(query);
+            List<String> phraseTerms = queryParser.parseQuery(phraseContent);
+
+            List<Integer> phraseResults = phraseHandler.executePhraseQuery(phraseTerms);
+
+            if (phraseResults.isEmpty()) {
+                System.out.println("No phrase matches found.");
+                return new ArrayList<>();
+            }
+
+            System.out.println("Phrase matches: " + phraseResults.size());
+
+            // Rank the phrase results
+            List<DocumentScore> ranked = ranker.rank(phraseContent, phraseResults);
+            System.out.println("Ranked results: " + ranked.size());
+            return ranked;
         }
 
         // Step 2: Retrieve posting lists
