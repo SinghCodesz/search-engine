@@ -4,6 +4,7 @@ import com.searchengine.indexer.InvertedIndex;
 import com.searchengine.ranker.DocumentScore;
 import com.searchengine.ranker.TFIDFRanker;
 import com.searchengine.query.PhraseQueryHandler;
+import com.searchengine.query.SnippetGenerator;
 
 import java.util.*;
 
@@ -18,6 +19,7 @@ public class SearchService {
     private final PostingsIntersector intersector;
     private final TFIDFRanker ranker;
     private final PhraseQueryHandler phraseHandler;
+    private final SnippetGenerator snippetGenerator;
 
     public SearchService(InvertedIndex index) {
         this.index = index;
@@ -25,6 +27,7 @@ public class SearchService {
         this.intersector = new PostingsIntersector();
         this.ranker = new TFIDFRanker(index);
         this.phraseHandler = new PhraseQueryHandler(index);
+        this.snippetGenerator = new SnippetGenerator(index);
     }
 
     /**
@@ -105,6 +108,26 @@ public class SearchService {
         System.out.println("Ranked results: " + ranked.size());
 
         return ranked;
+    }
+    /**
+     * Generate snippets for ranked results.
+     */
+    public Map<Integer, String> generateSnippets(String query,
+                                                 List<DocumentScore> results,
+                                                 Map<Integer, String> documentTexts) {
+        Map<Integer, String> snippets = new HashMap<>();
+        List<String> queryTerms = queryParser.parseQuery(query);
+
+        for (DocumentScore ds : results) {
+            int docId = ds.getDocumentId();
+            String text = documentTexts.get(docId);
+            if (text != null) {
+                String snippet = snippetGenerator.generateSnippet(text, queryTerms);
+                snippets.put(docId, snippet);
+            }
+        }
+
+        return snippets;
     }
 
     /**

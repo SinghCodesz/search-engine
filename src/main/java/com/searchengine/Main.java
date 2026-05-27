@@ -6,6 +6,7 @@ import com.searchengine.ranker.*;
 import com.searchengine.query.SearchService;
 import java.util.List;
 import java.util.Map;
+import com.searchengine.text.TextProcessor;
 
 import java.util.*;
 
@@ -59,6 +60,22 @@ public class Main {
         System.out.println("\n✅ BM25 ranking working!");
     }
 
+    private static Map<Integer, String> loadDocumentTexts(InvertedIndex index,
+                                                          IndexSerializer serializer,
+                                                          Map<Integer, String[]> docMap) {
+        Map<Integer, String> texts = new HashMap<>();
+        // We don't store full text in the serialized index.
+        // For now, use the stored document map titles and URLs as fallback.
+        // The snippet will scan whatever text is available.
+        for (Map.Entry<Integer, String[]> entry : docMap.entrySet()) {
+            int docId = entry.getKey();
+            String[] info = entry.getValue();
+            // Use title + URL as searchable text (limited but works)
+            texts.put(docId, info[1] + " " + info[0]);
+        }
+        return texts;
+    }
+
     private static void testSearch(SearchService service,
                                    Map<Integer, String[]> docMap,
                                    String query) {
@@ -70,12 +87,36 @@ public class Main {
         }
 
         System.out.println("\nTop " + Math.min(5, results.size()) + " results:");
+
+        // Get query terms for snippet generation
+        List<String> queryTerms = new com.searchengine.text.TextProcessor().process(
+                query.replace("\"", ""));
+
         results.stream().limit(5).forEach(ds -> {
             String[] docInfo = docMap.get(ds.getDocumentId());
             String title = docInfo != null ? docInfo[1] : "Unknown";
             String url = docInfo != null ? docInfo[0] : "Unknown";
+
             System.out.println(String.format("  %.4f — %s", ds.getScore(), title));
             System.out.println("         " + url);
+
+            // Generate a simple snippet using the title + url text
+            String docText = title + " " + url;
+            // Show first occurrence of any query term
+            String lowerText = docText.toLowerCase();
+            for (String term : queryTerms) {
+                int pos = lowerText.indexOf(term);
+                if (pos >= 0) {
+                    int start = Math.max(0, pos - 30);
+                    int end = Math.min(docText.length(), pos + term.length() + 30);
+                    String snippet = docText.substring(start, end);
+                    if (start > 0) snippet = "..." + snippet;
+                    if (end < docText.length()) snippet = snippet + "...";
+                    System.out.println("         \"" + snippet + "\"");
+                    break;
+                }
+            }
+            System.out.println();
         });
     }
 
