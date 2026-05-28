@@ -20,6 +20,7 @@ public class SearchService {
     private final TFIDFRanker ranker;
     private final PhraseQueryHandler phraseHandler;
     private final SnippetGenerator snippetGenerator;
+    private final SpellCorrector spellCorrector;
 
     public SearchService(InvertedIndex index) {
         this.index = index;
@@ -28,6 +29,7 @@ public class SearchService {
         this.ranker = new TFIDFRanker(index);
         this.phraseHandler = new PhraseQueryHandler(index);
         this.snippetGenerator = new SnippetGenerator(index);
+        this.spellCorrector = new SpellCorrector(index);
     }
 
     /**
@@ -142,5 +144,48 @@ public class SearchService {
      */
     public int getTotalDocuments() {
         return index.getTotalDocuments();
+    }
+
+    /**
+     * Check if query needs spell correction and return suggestion.
+     */
+    public String getSpellCorrection(String query) {
+        return spellCorrector.correctQuery(query);
+    }
+
+    /**
+     * Search with automatic spell correction.
+     * If no results found, tries corrected query.
+     */
+    public SearchResult searchWithCorrection(String query) {
+        List<DocumentScore> results = search(query);
+        String correction = null;
+
+        // If no results or very few results, try spell correction
+        if (results.isEmpty()) {
+            correction = spellCorrector.correctQuery(query);
+            if (correction != null && !correction.equals(query)) {
+                results = search(correction);
+            }
+        }
+
+        return new SearchResult(results, correction);
+    }
+
+    /**
+     * Inner class to hold search results with optional correction.
+     */
+    public static class SearchResult {
+        private final List<DocumentScore> results;
+        private final String correction;
+
+        public SearchResult(List<DocumentScore> results, String correction) {
+            this.results = results;
+            this.correction = correction;
+        }
+
+        public List<DocumentScore> getResults() { return results; }
+        public String getCorrection() { return correction; }
+        public boolean hasCorrection() { return correction != null; }
     }
 }

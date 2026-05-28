@@ -57,6 +57,17 @@ public class Main {
         testSearch(searchService, docMap, "\"quotes toscrape\"");
         testSearch(searchService, docMap, "\"goodreads com\"");
 
+        // Test spell correction
+        System.out.println("\n" + "=".repeat(70));
+        System.out.println("SPELL CORRECTION TESTS");
+        System.out.println("=".repeat(70));
+
+        testSpellCorrection(searchService, index, "bok");
+        testSpellCorrection(searchService, index, "scrap");
+        testSpellCorrection(searchService, index, "lif");
+        testSpellCorrection(searchService, index, "quotes");
+        testSpellCorrection(searchService, index, "domian");
+
         System.out.println("\n✅ BM25 ranking working!");
     }
 
@@ -74,6 +85,31 @@ public class Main {
             texts.put(docId, info[1] + " " + info[0]);
         }
         return texts;
+    }
+
+    private static void testSpellCorrection(SearchService service,
+                                            InvertedIndex index,
+                                            String query) {
+        System.out.println("\nQuery: '" + query + "'");
+
+        // First search without correction
+        List<com.searchengine.ranker.DocumentScore> originalResults = service.search(query);
+        System.out.println("  Results without correction: " + originalResults.size());
+
+        // Get spell correction
+        String correction = service.getSpellCorrection(query);
+
+        if (correction != null && !correction.equals(query)) {
+            System.out.println("  🔧 Did you mean: '" + correction + "'?");
+
+            // Search with correction
+            List<com.searchengine.ranker.DocumentScore> correctedResults = service.search(correction);
+            System.out.println("  Results with correction: " + correctedResults.size());
+        } else if (originalResults.isEmpty()) {
+            System.out.println("  No correction found.");
+        } else {
+            System.out.println("  Query appears correct.");
+        }
     }
 
     private static void testSearch(SearchService service,
