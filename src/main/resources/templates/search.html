@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${query} ? ${query} + ' — ' : '' + 'Search Engine'">Search Engine</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+        }
+        .header {
+            background: white;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+        }
+        .header-inner {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a73e8;
+            text-decoration: none;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .search-form {
+            display: flex;
+            gap: 10px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            font-size: 16px;
+            outline: none;
+            transition: box-shadow 0.2s;
+        }
+        .search-input:focus {
+            box-shadow: 0 1px 6px rgba(0,0,0,0.15);
+            border-color: #1a73e8;
+        }
+        .search-btn {
+            padding: 12px 24px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .search-btn:hover { background: #1557b0; }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px 30px;
+        }
+        .results-info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .correction {
+            background: #fff3cd;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .correction a { color: #1a73e8; text-decoration: none; font-weight: 500; }
+        .correction a:hover { text-decoration: underline; }
+
+        .result {
+            margin-bottom: 25px;
+        }
+        .result-title {
+            font-size: 18px;
+            color: #1a0dab;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .result-title:hover { text-decoration: underline; }
+        .result-url {
+            font-size: 13px;
+            color: #006621;
+            margin: 2px 0;
+        }
+        .result-snippet {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 30px;
+        }
+        .page-link {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #1a73e8;
+            font-size: 14px;
+        }
+        .page-link:hover { background: #f0f0f0; }
+        .page-link.active { background: #1a73e8; color: white; border-color: #1a73e8; }
+        .page-link.disabled { color: #ccc; pointer-events: none; }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .no-results h2 { font-size: 20px; margin-bottom: 10px; }
+        .empty-search {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="header-inner">
+        <a href="/" class="logo">🔍 SearchEngine</a>
+        <form class="search-form" action="/search" method="get">
+            <input type="text" name="q" class="search-input"
+                   th:value="${query}" placeholder="Search the web..." autofocus>
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Empty search -->
+    <div th:if="${query == null || query.isEmpty()}" class="empty-search">
+        <h2>Search something!</h2>
+        <p>Enter a query to search the indexed web pages.</p>
+    </div>
+
+    <!-- Spell correction -->
+    <div th:if="${correction != null}" class="correction">
+        Did you mean: <a th:href="@{/search(q=${correction})}" th:text="${correction}">correction</a>?
+    </div>
+
+    <!-- Results count -->
+    <div th:if="${results != null && !results.isEmpty()}" class="results-info">
+        About <span th:text="${totalResults}">0</span> results
+        (Page <span th:text="${currentPage + 1}">1</span> of <span th:text="${totalPages}">1</span>)
+    </div>
+
+    <!-- No results -->
+    <div th:if="${results != null && results.isEmpty() && query != null && !query.isEmpty()}" class="no-results">
+        <h2>No results found</h2>
+        <p>Try different keywords or check your spelling.</p>
+    </div>
+
+    <!-- Search results -->
+    <div th:each="result : ${results}" class="result">
+        <a th:href="${result.url}" class="result-title" target="_blank"
+           th:text="${result.title}">Title</a>
+        <div class="result-url" th:text="${result.url}">url</div>
+        <div class="result-snippet" th:text="${result.snippet}">snippet</div>
+    </div>
+
+    <!-- Pagination -->
+    <div th:if="${totalPages > 1}" class="pagination">
+        <a th:href="@{/search(q=${query}, page=${currentPage - 1})}"
+           class="page-link" th:classappend="${!hasPrev} ? 'disabled'" th:text="'← Previous'">← Previous</a>
+
+        <span class="page-link active" th:text="${currentPage + 1}">1</span>
+
+        <a th:href="@{/search(q=${query}, page=${currentPage + 1})}"
+           class="page-link" th:classappend="${!hasNext} ? 'disabled'" th:text="'Next →'">Next →</a>
+    </div>
+</div>
+</body>
+</html>
