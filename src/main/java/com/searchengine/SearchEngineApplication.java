@@ -6,6 +6,7 @@ import com.searchengine.query.SearchService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import com.searchengine.query.Trie;
 
 import java.util.Map;
 
@@ -47,5 +48,20 @@ public class SearchEngineApplication {
     @Bean
     public SearchService searchService() {
         return searchService;
+    }
+
+    // Add this bean method
+    @Bean
+    public Trie trie() {
+        Trie trie = new Trie();
+        if (index != null) {
+            System.out.println("Building autocomplete trie...");
+            for (String term : index.getAllTerms()) {
+                int frequency = index.getDocumentFrequency(term);
+                trie.insert(term, frequency);
+            }
+            System.out.println("Trie built: " + trie.size() + " words");
+        }
+        return trie;
     }
 }

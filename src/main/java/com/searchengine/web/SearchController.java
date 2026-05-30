@@ -7,6 +7,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import com.searchengine.query.Trie;
+import org.springframework.web.bind.annotation.ResponseBody;
+import java.util.stream.Collectors;
 
 import java.util.*;
 
@@ -16,13 +19,15 @@ public class SearchController {
     private final SearchService searchService;
     private final Map<Integer, String[]> docMap;
     private final InvertedIndex index;
+    private final Trie trie;
 
     public SearchController(SearchService searchService,
                             Map<Integer, String[]> docMap,
-                            InvertedIndex index) {
+                            InvertedIndex index, Trie trie) {
         this.searchService = searchService;
         this.docMap = docMap;
         this.index = index;
+        this.trie = trie;
     }
 
     @GetMapping("/")
@@ -84,6 +89,25 @@ public class SearchController {
         model.addAttribute("hasPrev", page > 0);
 
         return "search";
+    }
+
+    @GetMapping("/api/autocomplete")
+    @ResponseBody
+    public List<Map<String, Object>> autocomplete(@RequestParam String q) {
+        if (q == null || q.trim().length() < 2) {
+            return new ArrayList<>();
+        }
+
+        List<String> suggestions = trie.getSuggestions(q.trim().toLowerCase());
+
+        return suggestions.stream()
+                .map(word -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("word", word);
+                    item.put("frequency", trie.getFrequency(word));
+                    return item;
+                })
+                .collect(Collectors.toList());
     }
 
     private String generateSnippet(String[] docInfo) {

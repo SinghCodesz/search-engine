@@ -32,8 +32,12 @@
             display: flex;
             gap: 10px;
         }
-        .search-input {
+        .search-container {
+            position: relative;
             flex: 1;
+        }
+        .search-input {
+            width: 100%;
             padding: 12px 16px;
             border: 1px solid #ddd;
             border-radius: 24px;
@@ -44,6 +48,44 @@
         .search-input:focus {
             box-shadow: 0 1px 6px rgba(0,0,0,0.15);
             border-color: #1a73e8;
+        }
+        .suggestions-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+            margin-top: 2px;
+        }
+        .suggestion-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .suggestion-item:hover {
+            background: #d2e3fc;
+        }
+        .suggestion-item:first-child {
+            border-radius: 0;
+        }
+        .suggestion-item:last-child {
+            border-radius: 0 0 12px 12px;
+        }
+        .suggestion-word {
+            color: #333;
+            font-weight: 500;
+        }
+        .suggestion-freq {
+            color: #999;
+            font-size: 12px;
         }
         .search-btn {
             padding: 12px 24px;
@@ -133,9 +175,14 @@
 <div class="header">
     <div class="header-inner">
         <a href="/" class="logo">🔍 SearchEngine</a>
-        <form class="search-form" action="/search" method="get">
-            <input type="text" name="q" class="search-input"
-                   th:value="${query}" placeholder="Search the web..." autofocus>
+        <form class="search-form" action="/search" method="get" autocomplete="off">
+            <div class="search-container">
+                <input type="text" name="q" id="searchInput" class="search-input"
+                       th:value="${query}" placeholder="Search the web..." autofocus
+                       oninput="fetchSuggestions(this.value)"
+                       onkeydown="handleKeyDown(event)">
+                <div id="suggestions" class="suggestions-dropdown"></div>
+            </div>
             <button type="submit" class="search-btn">Search</button>
         </form>
     </div>
@@ -184,5 +231,90 @@
            class="page-link" th:classappend="${!hasNext} ? 'disabled'" th:text="'Next →'">Next →</a>
     </div>
 </div>
+
+<script>
+    var selectedIndex = -1;
+
+    function fetchSuggestions(query) {
+        var dropdown = document.getElementById('suggestions');
+        selectedIndex = -1;
+
+        if (query.length < 2) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        fetch('/api/autocomplete?q=' + encodeURIComponent(query))
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.length === 0) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                var html = '';
+                data.forEach(function(item, index) {
+                    html += '<div class="suggestion-item" ' +
+                        'onclick="selectSuggestion(\'' + item.word + '\')" ' +
+                        'onmouseover="highlightItem(' + index + ')" ' +
+                        'id="suggestion-' + index + '">';
+                    html += '<span class="suggestion-word">' + item.word + '</span>';
+                    html += '<span class="suggestion-freq">' + item.frequency + ' docs</span>';
+                    html += '</div>';
+                });
+
+                dropdown.innerHTML = html;
+                dropdown.style.display = 'block';
+            })
+            .catch(function(err) {
+                console.error('Autocomplete error:', err);
+            });
+    }
+
+    function selectSuggestion(word) {
+        document.getElementById('searchInput').value = word;
+        document.getElementById('suggestions').style.display = 'none';
+        document.querySelector('.search-form').submit();
+    }
+
+    function highlightItem(index) {
+        selectedIndex = index;
+        var items = document.querySelectorAll('.suggestion-item');
+        items.forEach(function(item, i) {
+            item.style.background = i === index ? '#d2e3fc' : 'white';
+        });
+    }
+
+    function handleKeyDown(event) {
+        var dropdown = document.getElementById('suggestions');
+        var items = document.querySelectorAll('.suggestion-item');
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+            highlightItem(selectedIndex);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, -1);
+            highlightItem(selectedIndex);
+        } else if (event.key === 'Enter' && selectedIndex >= 0) {
+            event.preventDefault();
+            var word = items[selectedIndex].querySelector('.suggestion-word').textContent;
+            selectSuggestion(word);
+        } else if (event.key === 'Escape') {
+            dropdown.style.display = 'none';
+            selectedIndex = -1;
+        }
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        var searchContainer = document.querySelector('.search-container');
+        if (!searchContainer.contains(event.target)) {
+            document.getElementById('suggestions').style.display = 'none';
+            selectedIndex = -1;
+        }
+    });
+</script>
 </body>
 </html>
