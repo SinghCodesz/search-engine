@@ -61,6 +61,10 @@ public class SearchController {
         int totalResults = allResults.size();
         int totalPages = (int) Math.ceil((double) totalResults / pageSize);
 
+        // Clamp page number to valid range
+        if (page < 0) page = 0;
+        if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+
         int fromIndex = page * pageSize;
         int toIndex = Math.min(fromIndex + pageSize, totalResults);
 

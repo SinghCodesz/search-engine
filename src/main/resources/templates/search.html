@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${query} ? ${query} + ' — ' : '' + 'Search Engine'">Search Engine</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -169,6 +170,15 @@
             padding: 60px;
             color: #999;
         }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+            margin-top: 40px;
+        }
+        .footer a { color: #1a73e8; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -191,8 +201,13 @@
 <div class="container">
     <!-- Empty search -->
     <div th:if="${query == null || query.isEmpty()}" class="empty-search">
-        <h2>Search something!</h2>
-        <p>Enter a query to search the indexed web pages.</p>
+        <div style="font-size: 60px; margin-bottom: 20px;">🔍</div>
+        <h2>Search the Web</h2>
+        <p>Enter a query above to search through indexed web pages.</p>
+        <p style="font-size: 13px; color: #bbb; margin-top: 10px;">
+            Index contains <strong>50 documents</strong> with
+            <strong>615 unique terms</strong>
+        </p>
     </div>
 
     <!-- Spell correction -->
@@ -202,8 +217,14 @@
 
     <!-- Results count -->
     <div th:if="${results != null && !results.isEmpty()}" class="results-info">
-        About <span th:text="${totalResults}">0</span> results
-        (Page <span th:text="${currentPage + 1}">1</span> of <span th:text="${totalPages}">1</span>)
+        About <strong th:text="${totalResults}">0</strong> results
+        <span th:if="${totalPages > 1}">
+        (Page <strong th:text="${currentPage + 1}">1</strong>
+        of <strong th:text="${totalPages}">1</strong>)
+    </span>
+        <span th:if="${query != null && !query.isEmpty()}">
+        for "<strong th:text="${query}">query</strong>"
+    </span>
     </div>
 
     <!-- No results -->
@@ -216,19 +237,32 @@
     <div th:each="result : ${results}" class="result">
         <a th:href="${result.url}" class="result-title" target="_blank"
            th:text="${result.title}">Title</a>
-        <div class="result-url" th:text="${result.url}">url</div>
-        <div class="result-snippet" th:text="${result.snippet}">snippet</div>
+        <div class="result-url">
+            <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='6' fill='%23006221'/></svg>"
+                 style="width:12px;height:12px;margin-right:4px;">
+            <span th:text="${result.url}">url</span>
+        </div>
+        <div class="result-snippet" th:utext="${result.snippet}">snippet</div>
+        <div style="font-size:11px;color:#999;margin-top:2px;">
+            Relevance score: <span th:text="${#numbers.formatDecimal(result.score, 0, 4)}">0.0000</span>
+        </div>
     </div>
 
     <!-- Pagination -->
     <div th:if="${totalPages > 1}" class="pagination">
         <a th:href="@{/search(q=${query}, page=${currentPage - 1})}"
-           class="page-link" th:classappend="${!hasPrev} ? 'disabled'" th:text="'← Previous'">← Previous</a>
+           class="page-link" th:classappend="${!hasPrev} ? 'disabled'">← Previous</a>
 
-        <span class="page-link active" th:text="${currentPage + 1}">1</span>
+        <span th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+        <a th:if="${i != currentPage}"
+           th:href="@{/search(q=${query}, page=${i})}"
+           class="page-link" th:text="${i + 1}">1</a>
+        <span th:if="${i == currentPage}"
+              class="page-link active" th:text="${i + 1}">1</span>
+    </span>
 
         <a th:href="@{/search(q=${query}, page=${currentPage + 1})}"
-           class="page-link" th:classappend="${!hasNext} ? 'disabled'" th:text="'Next →'">Next →</a>
+           class="page-link" th:classappend="${!hasNext} ? 'disabled'">Next →</a>
     </div>
 </div>
 
@@ -316,5 +350,13 @@
         }
     });
 </script>
+<div class="footer">
+    <p>
+        Search Engine built from scratch in Java •
+        <span th:text="${totalResults != null ? totalResults : 50}">50</span> pages indexed •
+        BM25 + TF-IDF ranking •
+        <a href="https://github.com/SinghCodesz/search-engine" target="_blank">GitHub</a>
+    </p>
+</div>
 </body>
 </html>
